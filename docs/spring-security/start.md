@@ -28,7 +28,7 @@ public class HelloController {
 }
 ```
 
-启动项目，然后访问 http://localhost:8080/hello 接口，会自动跳转到登陆页面，如下图所示。
+启动项目，然后访问 /hello 接口，会自动跳转到登陆页面，如下图所示。
 
 <img src="./figures/login.png" width = "300" height = "200" alt="登录页面" />
 
