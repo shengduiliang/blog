@@ -222,7 +222,7 @@ public interface SecurityContext extends Serializable {
 
 ### SecurityContextHolderFilter
 
-加下来我们看看Authentication是怎么放入SecurityContextHolder中的。首先我们来看HttpSecurity Bean的声明函数
+接下来我们看看Authentication是怎么放入SecurityContextHolder中的。首先我们来看HttpSecurity Bean的声明函数
 
 ``` HttpSecurityConfiguration
 @Configuration(proxyBeanMethods = false)
@@ -241,11 +241,11 @@ class HttpSecurityConfiguration {
 ```
 public final class HttpSecurity extends AbstractConfiguredSecurityBuilder<DefaultSecurityFilterChain, HttpSecurity>
 		implements SecurityBuilder<DefaultSecurityFilterChain>, HttpSecurityBuilder<HttpSecurity> {
-	public HttpSecurity securityContext(Customizer<SecurityContextConfigurer<HttpSecurity>> securityContextCustomizer)
-			throws Exception {
-		securityContextCustomizer.customize(getOrApply(new SecurityContextConfigurer<>()));
-		return HttpSecurity.this;
-	}
+  public HttpSecurity securityContext(Customizer<SecurityContextConfigurer<HttpSecurity>> securityContextCustomizer)
+      throws Exception {
+    securityContextCustomizer.customize(getOrApply(new SecurityContextConfigurer<>()));
+    return HttpSecurity.this;
+  }
 }
 ```
 
@@ -259,28 +259,28 @@ public final class SecurityContextConfigurer<H extends HttpSecurityBuilder<H>>
 	@Override
 	@SuppressWarnings("unchecked")
 	public void configure(H http) {
-		SecurityContextRepository securityContextRepository = getSecurityContextRepository();
-		if (this.requireExplicitSave) {
-			SecurityContextHolderFilter securityContextHolderFilter = postProcess(
-					new SecurityContextHolderFilter(securityContextRepository));
-			securityContextHolderFilter.setSecurityContextHolderStrategy(getSecurityContextHolderStrategy());
-			http.addFilter(securityContextHolderFilter);
-		}
-		else {
-			SecurityContextPersistenceFilter securityContextFilter = new SecurityContextPersistenceFilter(
-					securityContextRepository);
-			securityContextFilter.setSecurityContextHolderStrategy(getSecurityContextHolderStrategy());
-			SessionManagementConfigurer<?> sessionManagement = http.getConfigurer(SessionManagementConfigurer.class);
-			SessionCreationPolicy sessionCreationPolicy = (sessionManagement != null)
-					? sessionManagement.getSessionCreationPolicy() : null;
-			if (SessionCreationPolicy.ALWAYS == sessionCreationPolicy) {
-				securityContextFilter.setForceEagerSessionCreation(true);
-				http.addFilter(postProcess(new ForceEagerSessionCreationFilter()));
-			}
-			securityContextFilter = postProcess(securityContextFilter);
-			http.addFilter(securityContextFilter);
-		}
-	}
+    SecurityContextRepository securityContextRepository = getSecurityContextRepository();
+    if (this.requireExplicitSave) {
+      SecurityContextHolderFilter securityContextHolderFilter = postProcess(
+          new SecurityContextHolderFilter(securityContextRepository));
+      securityContextHolderFilter.setSecurityContextHolderStrategy(getSecurityContextHolderStrategy());
+      http.addFilter(securityContextHolderFilter);
+    }
+    else {
+      SecurityContextPersistenceFilter securityContextFilter = new SecurityContextPersistenceFilter(
+          securityContextRepository);
+      securityContextFilter.setSecurityContextHolderStrategy(getSecurityContextHolderStrategy());
+      SessionManagementConfigurer<?> sessionManagement = http.getConfigurer(SessionManagementConfigurer.class);
+      SessionCreationPolicy sessionCreationPolicy = (sessionManagement != null)
+          ? sessionManagement.getSessionCreationPolicy() : null;
+      if (SessionCreationPolicy.ALWAYS == sessionCreationPolicy) {
+        securityContextFilter.setForceEagerSessionCreation(true);
+        http.addFilter(postProcess(new ForceEagerSessionCreationFilter()));
+      }
+      securityContextFilter = postProcess(securityContextFilter);
+      http.addFilter(securityContextFilter);
+    }
+  }
 }
 ```
 
@@ -320,20 +320,20 @@ public class SecurityContextHolderFilter extends GenericFilterBean {
 ``` ThreadLocalSecurityContextHolderStrategy
 final class ThreadLocalSecurityContextHolderStrategy implements SecurityContextHolderStrategy {
   @Override
-	public SecurityContext getContext() {
-		return getDeferredContext().get();
-	}
+  public SecurityContext getContext() {
+    return getDeferredContext().get();
+  }
 
-	@Override
-	public Supplier<SecurityContext> getDeferredContext() {
-		Supplier<SecurityContext> result = contextHolder.get();
-		if (result == null) {
-			SecurityContext context = createEmptyContext();
-			result = () -> context;
-			contextHolder.set(result);
-		}
-		return result;
-	}
+  @Override
+  public Supplier<SecurityContext> getDeferredContext() {
+    Supplier<SecurityContext> result = contextHolder.get();
+    if (result == null) {
+      SecurityContext context = createEmptyContext();
+      result = () -> context;
+      contextHolder.set(result);
+    }
+    return result;
+  }
 }
 ```
 可以看到在getContext的时候才会把SecurityContext放到contextHolder中。
@@ -382,53 +382,53 @@ public class SecurityContextHolderAwareRequestWrapper extends HttpServletRequest
   }
   
   @Override
-	public String getRemoteUser() {
-		Authentication auth = getAuthentication();
-		if ((auth == null) || (auth.getPrincipal() == null)) {
-			return null;
-		}
-		if (auth.getPrincipal() instanceof UserDetails) {
-			return ((UserDetails) auth.getPrincipal()).getUsername();
-		}
-		if (auth instanceof AbstractAuthenticationToken) {
-			return auth.getName();
-		}
-		return auth.getPrincipal().toString();
-	}
+  public String getRemoteUser() {
+    Authentication auth = getAuthentication();
+    if ((auth == null) || (auth.getPrincipal() == null)) {
+      return null;
+    }
+    if (auth.getPrincipal() instanceof UserDetails) {
+      return ((UserDetails) auth.getPrincipal()).getUsername();
+    }
+    if (auth instanceof AbstractAuthenticationToken) {
+      return auth.getName();
+    }
+    return auth.getPrincipal().toString();
+  }
   
   @Override
-	public Principal getUserPrincipal() {
-		Authentication auth = getAuthentication();
-		if ((auth == null) || (auth.getPrincipal() == null)) {
-			return null;
-		}
-		return auth;
-	}
+  public Principal getUserPrincipal() {
+    Authentication auth = getAuthentication();
+    if ((auth == null) || (auth.getPrincipal() == null)) {
+      return null;
+    }
+    return auth;
+  }
   
   private boolean isGranted(String role) {
-	  Authentication auth = getAuthentication();
-		if (this.rolePrefix != null && role != null && !role.startsWith(this.rolePrefix)) {
-			role = this.rolePrefix + role;
-		}
-		if ((auth == null) || (auth.getPrincipal() == null)) {
-			return false;
-		}
-		Collection<? extends GrantedAuthority> authorities = auth.getAuthorities();
-		if (authorities == null) {
-			return false;
-		}
-		for (GrantedAuthority grantedAuthority : authorities) {
-			if (role.equals(grantedAuthority.getAuthority())) {
-				return true;
-			}
-		}
-		return false;
-	}
+    Authentication auth = getAuthentication();
+    if (this.rolePrefix != null && role != null && !role.startsWith(this.rolePrefix)) {
+      role = this.rolePrefix + role;
+    }
+    if ((auth == null) || (auth.getPrincipal() == null)) {
+      return false;
+    }
+    Collection<? extends GrantedAuthority> authorities = auth.getAuthorities();
+    if (authorities == null) {
+      return false;
+    }
+    for (GrantedAuthority grantedAuthority : authorities) {
+      if (role.equals(grantedAuthority.getAuthority())) {
+        return true;
+      }
+    }
+    return false;
+  }
   
   @Override
-	public boolean isUserInRole(String role) {
-		return isGranted(role);
-	}
+  public boolean isUserInRole(String role) {
+    return isGranted(role);
+  }
 }
 ```
 
@@ -460,14 +460,14 @@ public class SecurityContextHolderAwareRequestFilter extends GenericFilterBean {
 ``` SecurityContextHolderAwareRequestFilter
 public class SecurityContextHolderAwareRequestFilter extends GenericFilterBean {
   private HttpServletRequestFactory createServlet3Factory(String rolePrefix) {
-		HttpServlet3RequestFactory factory = new HttpServlet3RequestFactory(rolePrefix, this.securityContextRepository);
-		factory.setTrustResolver(this.trustResolver);
-		factory.setAuthenticationEntryPoint(this.authenticationEntryPoint);
-		factory.setAuthenticationManager(this.authenticationManager);
-		factory.setLogoutHandlers(this.logoutHandlers);
-		factory.setSecurityContextHolderStrategy(this.securityContextHolderStrategy);
-		return factory;
-	}
+    HttpServlet3RequestFactory factory = new HttpServlet3RequestFactory(rolePrefix, this.securityContextRepository);
+    factory.setTrustResolver(this.trustResolver);
+    factory.setAuthenticationEntryPoint(this.authenticationEntryPoint);
+    factory.setAuthenticationManager(this.authenticationManager);
+    factory.setLogoutHandlers(this.logoutHandlers);
+    factory.setSecurityContextHolderStrategy(this.securityContextHolderStrategy);
+    return factory;
+  }
 }
 ```
 
@@ -476,12 +476,12 @@ public class SecurityContextHolderAwareRequestFilter extends GenericFilterBean {
 ``` HttpServlet3RequestFactory
 final class HttpServlet3RequestFactory implements HttpServletRequestFactory {
   @Override
-	public HttpServletRequest create(HttpServletRequest request, HttpServletResponse response) {
-		Servlet3SecurityContextHolderAwareRequestWrapper wrapper = new Servlet3SecurityContextHolderAwareRequestWrapper(
-				request, this.rolePrefix, response);
-		wrapper.setSecurityContextHolderStrategy(this.securityContextHolderStrategy);
-		return wrapper;
-	}
+  public HttpServletRequest create(HttpServletRequest request, HttpServletResponse response) {
+    Servlet3SecurityContextHolderAwareRequestWrapper wrapper = new Servlet3SecurityContextHolderAwareRequestWrapper(
+        request, this.rolePrefix, response);
+    wrapper.setSecurityContextHolderStrategy(this.securityContextHolderStrategy);
+    return wrapper;
+  }
 }
 ```
 
@@ -493,8 +493,8 @@ final class HttpServlet3RequestFactory implements HttpServletRequestFactory {
 @Configuration(proxyBeanMethods = false)
 class HttpSecurityConfiguration {
   @Bean(HTTPSECURITY_BEAN_NAME)
-	@Scope("prototype")
-	HttpSecurity httpSecurity() throws Exception {
+  @Scope("prototype")
+  HttpSecurity httpSecurity() throws Exception {
     ...
     HttpSecurity http = new HttpSecurity(this.objectPostProcessor, authenticationBuilder, createSharedObjects());
     http.servletApi(withDefaults());
@@ -508,7 +508,7 @@ class HttpSecurityConfiguration {
 ```
 public final class ServletApiConfigurer<H extends HttpSecurityBuilder<H>>
 		extends AbstractHttpConfigurer<ServletApiConfigurer<H>, H> {
-	private SecurityContextHolderAwareRequestFilter securityContextRequestFilter = new SecurityContextHolderAwareRequestFilter();
+  private SecurityContextHolderAwareRequestFilter securityContextRequestFilter = new SecurityContextHolderAwareRequestFilter();
 
   public void configure(H http) {
     ...
@@ -559,25 +559,25 @@ SecurityContextHolderStrategy是在AbstractAuthenticationFilterConfigurer中配�
 ``` AbstractAuthenticationFilterConfigurer
 public abstract class AbstractAuthenticationFilterConfigurer<B extends HttpSecurityBuilder<B>, T extends AbstractAuthenticationFilterConfigurer<B, T, F>, F extends AbstractAuthenticationProcessingFilter>
 		extends AbstractHttpConfigurer<T, B> {
-	@Override
-	public void configure(B http) throws Exception {
+  @Override
+  public void configure(B http) throws Exception {
     this.authFilter.setSecurityContextHolderStrategy(getSecurityContextHolderStrategy());
   }
 
   protected SecurityContextHolderStrategy getSecurityContextHolderStrategy() {
-		if (this.securityContextHolderStrategy != null) {
-			return this.securityContextHolderStrategy;
-		}
-		ApplicationContext context = getBuilder().getSharedObject(ApplicationContext.class);
-		String[] names = context.getBeanNamesForType(SecurityContextHolderStrategy.class);
-		if (names.length == 1) {
-			this.securityContextHolderStrategy = context.getBean(SecurityContextHolderStrategy.class);
-		}
-		else {
-			this.securityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
-		}
-		return this.securityContextHolderStrategy;
-	}
+    if (this.securityContextHolderStrategy != null) {
+      return this.securityContextHolderStrategy;
+    }
+    ApplicationContext context = getBuilder().getSharedObject(ApplicationContext.class);
+    String[] names = context.getBeanNamesForType(SecurityContextHolderStrategy.class);
+    if (names.length == 1) {
+      this.securityContextHolderStrategy = context.getBean(SecurityContextHolderStrategy.class);
+    }
+    else {
+      this.securityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
+    }
+    return this.securityContextHolderStrategy;
+  }
 }
 ```
 
@@ -611,14 +611,14 @@ public abstract class AbstractAuthenticationProcessingFilter extends GenericFilt
   }
 
   protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain,
-			Authentication authResult) throws IOException, ServletException {
+      Authentication authResult) throws IOException, ServletException {
     SecurityContext context = this.securityContextHolderStrategy.createEmptyContext();
     context.setAuthentication(authResult);
     this.securityContextHolderStrategy.setContext(context);
     // 封装SecurityContext，保存用户认证信息到securityContextRepository中
     this.securityContextRepository.saveContext(context, request, response);
     ...
-	}
+  }
 }
 ```
 
@@ -641,14 +641,14 @@ public class SecurityContextHolderFilter extends GenericFilterBean {
 ```SecurityContextRepository
 public interface SecurityContextRepository {
   @Deprecated
-	SecurityContext loadContext(HttpRequestResponseHolder requestResponseHolder);
+  SecurityContext loadContext(HttpRequestResponseHolder requestResponseHolder);
   
   // 加载DeferredContext
   default DeferredSecurityContext loadDeferredContext(HttpServletRequest request) {
-		Supplier<SecurityContext> supplier = () -> loadContext(new HttpRequestResponseHolder(request, null));
-		return new SupplierDeferredSecurityContext(SingletonSupplier.of(supplier),
-				SecurityContextHolder.getContextHolderStrategy());
-	}
+    Supplier<SecurityContext> supplier = () -> loadContext(new HttpRequestResponseHolder(request, null));
+    return new SupplierDeferredSecurityContext(SingletonSupplier.of(supplier),
+        SecurityContextHolder.getContextHolderStrategy());
+  }
 
   // 保存SecurityContext
   void saveContext(SecurityContext context, HttpServletRequest request, HttpServletResponse response);
@@ -663,7 +663,7 @@ public interface SecurityContextRepository {
 
 - HttpSessionSecurityContextRepository: 将SecurityContext保存在HttpSession中
 - RequestAttributeSecurityContextRepository: 将SecurityContext保存在RequestAttribute，这个感觉在微服务架构中很有用
-= DelegatingSecurityContextRepository: 复合Repository，可以嵌套SecurityContextRepository
+- DelegatingSecurityContextRepository: 复合Repository，可以嵌套SecurityContextRepository
 
 而SecurityContextRepository的默认类就是DelegatingSecurityContextRepository。前面说到HttpSecurity会引入以下这个SecurityContextConfigurer，看里面的configure方法。
 
@@ -739,26 +739,26 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 public final class DelegatingSecurityContextRepository implements SecurityContextRepository {
   
   @Override
-	public void saveContext(SecurityContext context, HttpServletRequest request, HttpServletResponse response) {
-		for (SecurityContextRepository delegate : this.delegates) {
-			delegate.saveContext(context, request, response);
-		}
-	}
+  public void saveContext(SecurityContext context, HttpServletRequest request, HttpServletResponse response) {
+    for (SecurityContextRepository delegate : this.delegates) {
+      delegate.saveContext(context, request, response);
+    }
+  }
 
   @Override
-	public DeferredSecurityContext loadDeferredContext(HttpServletRequest request) {
-		DeferredSecurityContext deferredSecurityContext = null;
-		for (SecurityContextRepository delegate : this.delegates) {
-			if (deferredSecurityContext == null) {
-				deferredSecurityContext = delegate.loadDeferredContext(request);
-			}
-			else {
-				DeferredSecurityContext next = delegate.loadDeferredContext(request);
-				deferredSecurityContext = new DelegatingDeferredSecurityContext(deferredSecurityContext, next);
-			}
-		}
-		return deferredSecurityContext;
-	}
+  public DeferredSecurityContext loadDeferredContext(HttpServletRequest request) {
+    DeferredSecurityContext deferredSecurityContext = null;
+    for (SecurityContextRepository delegate : this.delegates) {
+      if (deferredSecurityContext == null) {
+        deferredSecurityContext = delegate.loadDeferredContext(request);
+      }
+      else {
+        DeferredSecurityContext next = delegate.loadDeferredContext(request);
+        deferredSecurityContext = new DelegatingDeferredSecurityContext(deferredSecurityContext, next);
+      }
+    }
+    return deferredSecurityContext;
+  }
 }
 ```
 
@@ -878,11 +878,11 @@ public class DefaultSecurityConfig {
 public final class HttpSecurity extends AbstractConfiguredSecurityBuilder<DefaultSecurityFilterChain, HttpSecurity>
 		implements SecurityBuilder<DefaultSecurityFilterChain>, HttpSecurityBuilder<HttpSecurity> {
 
-	public HttpSecurity sessionManagement(
-			Customizer<SessionManagementConfigurer<HttpSecurity>> sessionManagementCustomizer) throws Exception {
-		sessionManagementCustomizer.customize(getOrApply(new SessionManagementConfigurer<>()));
-		return HttpSecurity.this;
-	}
+  public HttpSecurity sessionManagement(
+      Customizer<SessionManagementConfigurer<HttpSecurity>> sessionManagementCustomizer) throws Exception {
+    sessionManagementCustomizer.customize(getOrApply(new SessionManagementConfigurer<>()));
+    return HttpSecurity.this;
+  }
 }
 ```
 
@@ -892,15 +892,15 @@ public final class HttpSecurity extends AbstractConfiguredSecurityBuilder<Defaul
 public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 		extends AbstractHttpConfigurer<SessionManagementConfigurer<H>, H> {
 
-	private boolean isStateless() {
-		SessionCreationPolicy sessionPolicy = getSessionCreationPolicy();
-		return SessionCreationPolicy.STATELESS == sessionPolicy;
-	}
+  private boolean isStateless() {
+    SessionCreationPolicy sessionPolicy = getSessionCreationPolicy();
+    return SessionCreationPolicy.STATELESS == sessionPolicy;
+  }
 
-	private boolean isAllowSessionCreation() {
-		SessionCreationPolicy sessionPolicy = getSessionCreationPolicy();
-		return SessionCreationPolicy.ALWAYS == sessionPolicy || SessionCreationPolicy.IF_REQUIRED == sessionPolicy;
-	}
+  private boolean isAllowSessionCreation() {
+    SessionCreationPolicy sessionPolicy = getSessionCreationPolicy();
+    return SessionCreationPolicy.ALWAYS == sessionPolicy || SessionCreationPolicy.IF_REQUIRED == sessionPolicy;
+  }
 
   @Override
   public void init(H http) {
@@ -909,7 +909,7 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
     boolean stateless = isStateless();
     // 如果没有SecurityContextRepository实例，则创建
     if (securityContextRepository == null) {
-      // 如果是stateless，就啥都不敢
+      // 如果是stateless，就啥都不干
       if (stateless) {
         http.setSharedObject(SecurityContextRepository.class, new RequestAttributeSecurityContextRepository());
         this.sessionManagementSecurityContextRepository = new NullSecurityContextRepository();
@@ -944,7 +944,7 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 }
 ```
 
-这里简单介绍一下HttpSecurtiy的创建时机吧，在Spring Security中，一共有四种
+这里简单介绍一下HttpSession的创建时机吧，在Spring Security中，一共有四种
 
 - ALWAYS: 如果HttpSession不存在，则创建
 - NEVER: 从不创建HttpSession，但是如果HttpSession已经存在了，则会使用它
@@ -1148,13 +1148,13 @@ RegisterSessionAuthenticationStrategy的代码如下所示。
 ```RegisterSessionAuthenticationStrategy
 public class RegisterSessionAuthenticationStrategy implements SessionAuthenticationStrategy {
 
-	private final SessionRegistry sessionRegistry;
+  private final SessionRegistry sessionRegistry;
 
-	@Override
-	public void onAuthentication(Authentication authentication, HttpServletRequest request,
-			HttpServletResponse response) {
-		this.sessionRegistry.registerNewSession(request.getSession().getId(), authentication.getPrincipal());
-	}
+  @Override
+  public void onAuthentication(Authentication authentication, HttpServletRequest request,
+      HttpServletResponse response) {
+    this.sessionRegistry.registerNewSession(request.getSession().getId(), authentication.getPrincipal());
+  }
 }
 ```
 
@@ -1167,14 +1167,14 @@ public class CompositeSessionAuthenticationStrategy implements SessionAuthentica
   private final List<SessionAuthenticationStrategy> delegateStrategies;
 
   @Override
-	public void onAuthentication(Authentication authentication, HttpServletRequest request,
-			HttpServletResponse response) throws SessionAuthenticationException {
+  public void onAuthentication(Authentication authentication, HttpServletRequest request,
+      HttpServletResponse response) throws SessionAuthenticationException {
     ...
-		for (SessionAuthenticationStrategy delegate : this.delegateStrategies) {
+    for (SessionAuthenticationStrategy delegate : this.delegateStrategies) {
       ...
-			delegate.onAuthentication(authentication, request, response);
-		}
-	}
+      delegate.onAuthentication(authentication, request, response);
+    }
+  }
 }
 ```
 可以看到，直接遍历它维护的SessionAuthenticationStrategy的onAuthentication方法。
@@ -1209,13 +1209,13 @@ sessionStrategy默认是个NullAuthenticatedSessionStrategy什么都不干，我
 ```AbstractAuthenticationFilterConfigurer
 public abstract class AbstractAuthenticationFilterConfigurer<B extends HttpSecurityBuilder<B>, T extends AbstractAuthenticationFilterConfigurer<B, T, F>, F extends AbstractAuthenticationProcessingFilter>
 		extends AbstractHttpConfigurer<T, B> {
-	@Override
-	public void configure(B http) throws Exception {
+  @Override
+  public void configure(B http) throws Exception {
     SessionAuthenticationStrategy sessionAuthenticationStrategy = http
-			.getSharedObject(SessionAuthenticationStrategy.class);
-		if (sessionAuthenticationStrategy != null) {
-			this.authFilter.setSessionAuthenticationStrategy(sessionAuthenticationStrategy);
-		}
+      .getSharedObject(SessionAuthenticationStrategy.class);
+    if (sessionAuthenticationStrategy != null) {
+      this.authFilter.setSessionAuthenticationStrategy(sessionAuthenticationStrategy);
+    }
   }
 }
 ```
@@ -1225,50 +1225,50 @@ SessionAuthenticationStrategy.class是在哪里呢，由于本节是session会�
 ``` SessionManagementConfigurer
 public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 		extends AbstractHttpConfigurer<SessionManagementConfigurer<H>, H> {
-	@Override
-	public void init(H http) {
+  @Override
+  public void init(H http) {
     http.setSharedObject(SessionAuthenticationStrategy.class, getSessionAuthenticationStrategy(http));
   }
 
   private SessionAuthenticationStrategy getSessionAuthenticationStrategy(H http) {
-		if (this.sessionAuthenticationStrategy != null) {
-			return this.sessionAuthenticationStrategy;
-		}
-		List<SessionAuthenticationStrategy> delegateStrategies = this.sessionAuthenticationStrategies;
-		SessionAuthenticationStrategy defaultSessionAuthenticationStrategy;
-		if (this.providedSessionAuthenticationStrategy == null) {
-			// If the user did not provide a SessionAuthenticationStrategy
-			// then default to sessionFixationAuthenticationStrategy
-			defaultSessionAuthenticationStrategy = postProcess(this.sessionFixationAuthenticationStrategy);
-		}
-		else {
-			defaultSessionAuthenticationStrategy = this.providedSessionAuthenticationStrategy;
-		}
+    if (this.sessionAuthenticationStrategy != null) {
+      return this.sessionAuthenticationStrategy;
+    }
+    List<SessionAuthenticationStrategy> delegateStrategies = this.sessionAuthenticationStrategies;
+    SessionAuthenticationStrategy defaultSessionAuthenticationStrategy;
+    if (this.providedSessionAuthenticationStrategy == null) {
+      // If the user did not provide a SessionAuthenticationStrategy
+      // then default to sessionFixationAuthenticationStrategy
+      defaultSessionAuthenticationStrategy = postProcess(this.sessionFixationAuthenticationStrategy);
+    }
+    else {
+      defaultSessionAuthenticationStrategy = this.providedSessionAuthenticationStrategy;
+    }
     // 如果开启会话并发控制
-		if (isConcurrentSessionControlEnabled()) {
-			SessionRegistry sessionRegistry = getSessionRegistry(http);
+    if (isConcurrentSessionControlEnabled()) {
+      SessionRegistry sessionRegistry = getSessionRegistry(http);
       // ConcurrentSessionControlAuthenticationStrategy
-			ConcurrentSessionControlAuthenticationStrategy concurrentSessionControlStrategy = new ConcurrentSessionControlAuthenticationStrategy(
-					sessionRegistry);
-			concurrentSessionControlStrategy.setMaximumSessions(this.maximumSessions);
-			concurrentSessionControlStrategy.setExceptionIfMaximumExceeded(this.maxSessionsPreventsLogin);
-			concurrentSessionControlStrategy = postProcess(concurrentSessionControlStrategy);
+      ConcurrentSessionControlAuthenticationStrategy concurrentSessionControlStrategy = new ConcurrentSessionControlAuthenticationStrategy(
+          sessionRegistry);
+      concurrentSessionControlStrategy.setMaximumSessions(this.maximumSessions);
+      concurrentSessionControlStrategy.setExceptionIfMaximumExceeded(this.maxSessionsPreventsLogin);
+      concurrentSessionControlStrategy = postProcess(concurrentSessionControlStrategy);
       // RegisterSessionAuthenticationStrategy
-			RegisterSessionAuthenticationStrategy registerSessionStrategy = new RegisterSessionAuthenticationStrategy(
-					sessionRegistry);
-			registerSessionStrategy = postProcess(registerSessionStrategy);
+      RegisterSessionAuthenticationStrategy registerSessionStrategy = new RegisterSessionAuthenticationStrategy(
+          sessionRegistry);
+      registerSessionStrategy = postProcess(registerSessionStrategy);
 
-			delegateStrategies.addAll(Arrays.asList(concurrentSessionControlStrategy,
-					defaultSessionAuthenticationStrategy, registerSessionStrategy));
-		}
-		else {
-			delegateStrategies.add(defaultSessionAuthenticationStrategy);
-		}
+      delegateStrategies.addAll(Arrays.asList(concurrentSessionControlStrategy,
+          defaultSessionAuthenticationStrategy, registerSessionStrategy));
+    }
+    else {
+      delegateStrategies.add(defaultSessionAuthenticationStrategy);
+    }
     // CompositeSessionAuthenticationStrategy
-		this.sessionAuthenticationStrategy = postProcess(
-				new CompositeSessionAuthenticationStrategy(delegateStrategies));
-		return this.sessionAuthenticationStrategy;
-	}
+    this.sessionAuthenticationStrategy = postProcess(
+        new CompositeSessionAuthenticationStrategy(delegateStrategies));
+    return this.sessionAuthenticationStrategy;
+  }
 }
 ```
 
@@ -1280,55 +1280,55 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 public class SessionManagementFilter extends GenericFilterBean {
   
   private void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
-			throws IOException, ServletException {
+      throws IOException, ServletException {
     // 如果已经配置了FILTER_APPLIED，直接跳过，第二次进来过滤器
-		if (request.getAttribute(FILTER_APPLIED) != null) {
-			chain.doFilter(request, response);
-			return;
-		}
-		request.setAttribute(FILTER_APPLIED, Boolean.TRUE);
+    if (request.getAttribute(FILTER_APPLIED) != null) {
+      chain.doFilter(request, response);
+      return;
+    }
+    request.setAttribute(FILTER_APPLIED, Boolean.TRUE);
     // 如果securityContextRepository获取不到这个request的会话，有可能不是通过正常认证流程认证的
-		if (!this.securityContextRepository.containsContext(request)) {
+    if (!this.securityContextRepository.containsContext(request)) {
       // 获取authentication
-			Authentication authentication = this.securityContextHolderStrategy.getContext().getAuthentication();
-			if (this.trustResolver.isAuthenticated(authentication)) {
-				// The user has been authenticated during the current request, so call the
-				// session strategy
+      Authentication authentication = this.securityContextHolderStrategy.getContext().getAuthentication();
+      if (this.trustResolver.isAuthenticated(authentication)) {
+        // The user has been authenticated during the current request, so call the
+        // session strategy
         // 调用sessionAuthenticationStrategy的认证方法
-				try {
-					this.sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
-				}
-				catch (SessionAuthenticationException ex) {
-					// The session strategy can reject the authentication
-					this.logger.debug("SessionAuthenticationStrategy rejected the authentication object", ex);
-					this.securityContextHolderStrategy.clearContext();
-					this.failureHandler.onAuthenticationFailure(request, response, ex);
-					return;
-				}
-				// Eagerly save the security context to make it available for any possible
-				// re-entrant requests which may occur before the current request
-				// completes. SEC-1396.
-				this.securityContextRepository.saveContext(this.securityContextHolderStrategy.getContext(), request,
-						response);
-			}
+        try {
+          this.sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
+        }
+        catch (SessionAuthenticationException ex) {
+          // The session strategy can reject the authentication
+          this.logger.debug("SessionAuthenticationStrategy rejected the authentication object", ex);
+          this.securityContextHolderStrategy.clearContext();
+          this.failureHandler.onAuthenticationFailure(request, response, ex);
+          return;
+        }
+        // Eagerly save the security context to make it available for any possible
+        // re-entrant requests which may occur before the current request
+        // completes. SEC-1396.
+        this.securityContextRepository.saveContext(this.securityContextHolderStrategy.getContext(), request,
+            response);
+      }
       // 如果是匿名访问，即未通过认证的，直接进行会话失效处理
-			else {
-				// No security context or authentication present. Check for a session
-				// timeout
-				if (request.getRequestedSessionId() != null && !request.isRequestedSessionIdValid()) {
-					if (this.logger.isDebugEnabled()) {
-						this.logger.debug(LogMessage.format("Request requested invalid session id %s",
-								request.getRequestedSessionId()));
-					}
-					if (this.invalidSessionStrategy != null) {
-						this.invalidSessionStrategy.onInvalidSessionDetected(request, response);
-						return;
-					}
-				}
-			}
-		}
-		chain.doFilter(request, response);
-	}
+      else {
+        // No security context or authentication present. Check for a session
+        // timeout
+        if (request.getRequestedSessionId() != null && !request.isRequestedSessionIdValid()) {
+          if (this.logger.isDebugEnabled()) {
+            this.logger.debug(LogMessage.format("Request requested invalid session id %s",
+                request.getRequestedSessionId()));
+          }
+          if (this.invalidSessionStrategy != null) {
+            this.invalidSessionStrategy.onInvalidSessionDetected(request, response);
+            return;
+          }
+        }
+      }
+    }
+    chain.doFilter(request, response);
+  }
 }
 ```
 

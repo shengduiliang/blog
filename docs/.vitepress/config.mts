@@ -2,6 +2,9 @@ import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
+  markdown: {
+    lineNumbers: true
+  },
   title: "shengduiliang",
   description: "shengduiliang的博客网站",
   themeConfig: {
@@ -9,13 +12,15 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Spring Security', link: '/spring-security/start' },
-      { text: 'xxl-job', link: '/xxl-job/start'}
+      { text: 'xxl-job', link: '/xxl-job/start'},
+      { text: 'redis', link: '/redis/start'}
     ],
 
     sidebar: [
       {
         collapsed: true, // 侧边栏折叠
         text: 'Spring Security 6',
+        
         items: [
           { text: '入门与使用', link: '/spring-security/start' },
           { text: '表单登录认证', link: '/spring-security/form-login' },
@@ -26,7 +31,9 @@ export default defineConfig({
           { text: '异常处理', link: '/spring-security/exception' },
           { text: 'RememberMe', link: '/spring-security/remember-me' },
           { text: '权限管理', link: '/spring-security/authorities' },
-          { text: 'OAtuh2认证流程', link: '/spring-security/oauth2' },
+          { text: 'OAtuh2认证', link: '/spring-security/oauth2-start' },
+          { text: 'OAtuh2客户端认证流程', link: '/spring-security/oauth2-client' },
+          { text: 'OAtuh2服务端认证流程', link: '/spring-security/oauth2-server' },
         ]
       },
       {
@@ -42,6 +49,29 @@ export default defineConfig({
           { text: '定时任务执行流程', link: '/xxl-job/trigger' },
           { text: '路由选择策略', link: '/xxl-job/route' },
           { text: '执行器初始化流程', link: '/xxl-job/executor' },
+        ]
+      },
+      {
+        collapsed: true, // 侧边栏折叠
+        text: 'redis 7',
+        items: [
+          { text: '源码环境的搭建', link: '/redis/start' },
+          { text: '架构设计', link: '/redis/architecture' },
+          { text: 'I/O多线程网络驱动模型', link: '/redis/main' },
+          { text: '全局散列表', link: '/redis/ht_table'},
+          { text: '字符串实现原理', link: '/redis/sds'},
+          { text: 'List实现原理与实战', link: '/redis/list'},
+          { text: 'Sets实现原理与实战', link: '/redis/set'},
+          { text: '散列表实现原理与实战', link: '/redis/hashtable'}
+        ]
+      },
+      {
+        collapsed: true, // 侧边栏折叠
+        text: 'k8s',
+        items: [
+          { text: 'ubuntu安装k8s(1.30)', link: '/k8s/install' },
+          { text: 'sealos安装k8s(1.27)', link: '/k8s/sealos-install' },
+          { text: 'vmware-ubuntu磁盘扩容', link: '/k8s/vmware-funsion-ubuntu-disk-dilatation' }
         ]
       }
     ],
