@@ -42,17 +42,17 @@ public final class HttpSecurity extends AbstractConfiguredSecurityBuilder<Defaul
 ```
 public final class ExceptionHandlingConfigurer<H extends HttpSecurityBuilder<H>>
 		extends AbstractHttpConfigurer<ExceptionHandlingConfigurer<H>, H> {
-	@Override
-	public void configure(H http) {
-		AuthenticationEntryPoint entryPoint = getAuthenticationEntryPoint(http);
-		ExceptionTranslationFilter exceptionTranslationFilter = new ExceptionTranslationFilter(entryPoint,
-				getRequestCache(http));
-		AccessDeniedHandler deniedHandler = getAccessDeniedHandler(http);
-		exceptionTranslationFilter.setAccessDeniedHandler(deniedHandler);
-		exceptionTranslationFilter.setSecurityContextHolderStrategy(getSecurityContextHolderStrategy());
-		exceptionTranslationFilter = postProcess(exceptionTranslationFilter);
-		http.addFilter(exceptionTranslationFilter);
-	}
+  @Override
+  public void configure(H http) {
+    AuthenticationEntryPoint entryPoint = getAuthenticationEntryPoint(http);
+    ExceptionTranslationFilter exceptionTranslationFilter = new ExceptionTranslationFilter(entryPoint,
+        getRequestCache(http));
+    AccessDeniedHandler deniedHandler = getAccessDeniedHandler(http);
+    exceptionTranslationFilter.setAccessDeniedHandler(deniedHandler);
+    exceptionTranslationFilter.setSecurityContextHolderStrategy(getSecurityContextHolderStrategy());
+    exceptionTranslationFilter = postProcess(exceptionTranslationFilter);
+    http.addFilter(exceptionTranslationFilter);
+  }
 
   AuthenticationEntryPoint getAuthenticationEntryPoint(H http) {
     AuthenticationEntryPoint entryPoint = this.authenticationEntryPoint;
@@ -149,7 +149,7 @@ public final class ExceptionHandlingConfigurer<H extends HttpSecurityBuilder<H>>
 
   private AuthenticationEntryPoint authenticationEntryPoint;
 
-	@Override
+  @Override
   public void configure(H http) {
     AuthenticationEntryPoint entryPoint = getAuthenticationEntryPoint(http);
     ExceptionTranslationFilter exceptionTranslationFilter = new ExceptionTranslationFilter(entryPoint,
@@ -206,10 +206,8 @@ public class DelegatingAuthenticationEntryPoint implements AuthenticationEntryPo
   public void commence(HttpServletRequest request, HttpServletResponse response,
       AuthenticationException authException) throws IOException, ServletException {
     for (RequestMatcher requestMatcher : this.entryPoints.keySet()) {
-      logger.debug(LogMessage.format("Trying to match using %s", requestMatcher));
       if (requestMatcher.matches(request)) {
         AuthenticationEntryPoint entryPoint = this.entryPoints.get(requestMatcher);
-        logger.debug(LogMessage.format("Match found! Executing %s", entryPoint));
         entryPoint.commence(request, response, authException);
         return;
       }
@@ -226,9 +224,37 @@ public class DelegatingAuthenticationEntryPoint implements AuthenticationEntryPo
 - 表单登录在AbstractAuthenticationFilterConfigurer#registerAuthenticationEntryPoint中会向defaultEntryPointMappings加入一个LoginUrlAuthenticationEntryPoint，自动跳转到登录页面
 - HttpBasic在HttpBasicConfigurer#registerDefaultEntryPoint中向defaultEntryPointMappings加入一个BasicAuthenticationEntryPoint，返回认证请求
 
+### AccessDeniedException
 
+我们再看一下AccessDeniedException的处理，
 
-由于现在基本上都是前后端分离相关，我们写一个返回认证失败的请求。直接拿之前的代码做修改。
+``` ExceptionTranslationFilter
+public class ExceptionTranslationFilter extends GenericFilterBean implements MessageSourceAware {
+  private void handleAccessDeniedException(HttpServletRequest request, HttpServletResponse response,
+      FilterChain chain, AccessDeniedException exception) throws ServletException, IOException {
+    Authentication authentication = this.securityContextHolderStrategy.getContext().getAuthentication();
+    boolean isAnonymous = this.authenticationTrustResolver.isAnonymous(authentication);
+    // 如果是匿名用户，或者是通过Remember登录的，则调用AuthenticationException处理
+    if (isAnonymous || this.authenticationTrustResolver.isRememberMe(authentication)) {
+      // 可以看到处理跟上面的AuthenticationException一样
+      sendStartAuthentication();
+    }
+    else {
+      // 否则调用accessDeniedHandler.handle
+      this.accessDeniedHandler.handle(request, response, exception);
+    }
+  }
+}
+```
+
+由于accessDeniedHandler的处理跟authenticationEntryPoint类似，可以直接参照源码解读。
+
+### 扩展点
+
+- accessDeniedHandler: 定义匿名用户权限异常问题
+- authenticationEntryPoint: 定义实名用户权限异常问题
+
+由于现在基本上都是前后端分离相关，我们写一个未登录用户访问资源报错的Demo。直接拿之前的代码做修改。
 
 新增一个CustomerHandler文件，用来处理异常认证请求。代码如下
 
@@ -267,42 +293,6 @@ public class DefaultSecurityConfig {
 ```
 
 具体代码，点击[此处](https://github.com/shengduiliang/spring-security-demo/tree/main/spring-security-exception-handler)
-
-### AccessDeniedException
-
-我们再看一下AccessDeniedException的处理，
-
-``` ExceptionTranslationFilter
-public class ExceptionTranslationFilter extends GenericFilterBean implements MessageSourceAware {
-  private void handleAccessDeniedException(HttpServletRequest request, HttpServletResponse response,
-      FilterChain chain, AccessDeniedException exception) throws ServletException, IOException {
-    Authentication authentication = this.securityContextHolderStrategy.getContext().getAuthentication();
-    boolean isAnonymous = this.authenticationTrustResolver.isAnonymous(authentication);
-    // 如果是匿名用户，或者是通过Remember登录的，则调用AuthenticationException处理
-    if (isAnonymous || this.authenticationTrustResolver.isRememberMe(authentication)) {
-      if (logger.isTraceEnabled()) {
-        logger.trace(LogMessage.format("Sending %s to authentication entry point since access is denied",
-            authentication), exception);
-      }
-      sendStartAuthentication(request, response, chain,
-          new InsufficientAuthenticationException(
-              this.messages.getMessage("ExceptionTranslationFilter.insufficientAuthentication",
-                  "Full authentication is required to access this resource")));
-    }
-    else {
-      if (logger.isTraceEnabled()) {
-        logger.trace(
-            LogMessage.format("Sending %s to access denied handler since access is denied", authentication),
-            exception);
-      }
-      // 否则调用accessDeniedHandler.handle
-      this.accessDeniedHandler.handle(request, response, exception);
-    }
-  }
-}
-```
-
-由于accessDeniedHandler的处理跟authenticationEntryPoint类似，可以直接参照源码解读。
 
 ## AuthorizationFilter
 
@@ -345,4 +335,74 @@ public class AuthorizationFilter extends GenericFilterBean {
 }
 ```
 
-AuthorizationFilter是在AuthorizeHttpRequestsConfigurer中加入的，但是AuthorizeHttpRequestsConfigurer是在什么时候加入的还需梳理。
+AuthorizationFilter是在AuthorizeHttpRequestsConfigurer中加入的，AuthorizeHttpRequestsConfigurer是什么时候配置的呢，我们看security的配置文件。
+
+```
+@Configuration
+public class DefaultSecurityConfig {
+  @Bean
+  SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
+    // 就是在这一行，如果把这行代码注释掉，就会发现资源没有登录的话也会返回了
+    http.authorizeHttpRequests(requests -> requests.anyRequest().authenticated());
+    http.formLogin(Customizer.withDefaults());
+    return http.build();
+  }
+}
+```
+
+注意AuthorizationFilter的AuthorizationManage跟HttpSecurity里面的不是同一个，是自定义的，可以看AuthorizeHttpRequestsConfigurer的configure方法。
+
+``` AuthorizeHttpRequestsConfigurer
+public final class AuthorizeHttpRequestsConfigurer<H extends HttpSecurityBuilder<H>>
+		extends AbstractHttpConfigurer<AuthorizeHttpRequestsConfigurer<H>, H> {
+  @Override
+  public void configure(H http) {
+    // 在这里创建的
+    AuthorizationManager<HttpServletRequest> authorizationManager = this.registry.createAuthorizationManager();
+    AuthorizationFilter authorizationFilter = new AuthorizationFilter(authorizationManager);
+    authorizationFilter.setAuthorizationEventPublisher(this.publisher);
+    authorizationFilter.setShouldFilterAllDispatcherTypes(this.registry.shouldFilterAllDispatcherTypes);
+    authorizationFilter.setSecurityContextHolderStrategy(getSecurityContextHolderStrategy());
+    http.addFilter(postProcess(authorizationFilter));
+  }
+}
+```
+
+默认使用RequestMatcherDelegatingAuthorizationManager的check做校验。
+
+``` RequestMatcherDelegatingAuthorizationManager
+public final class RequestMatcherDelegatingAuthorizationManager implements AuthorizationManager<HttpServletRequest> {
+  @Deprecated
+  @Override
+  public AuthorizationDecision check(Supplier<Authentication> authentication, HttpServletRequest request) {
+    ...
+    for (RequestMatcherEntry<AuthorizationManager<RequestAuthorizationContext>> mapping : this.mappings) {
+      RequestMatcher matcher = mapping.getRequestMatcher();
+      MatchResult matchResult = matcher.matcher(request);
+      if (matchResult.isMatch()) {
+        return manager.check(authentication, new RequestAuthorizationContext(request, matchResult.getVariables()));
+      }
+    }
+    return DENY;
+  }
+}
+```
+
+可以看到是遍历this.mappings来做处理，很容易就知道，就是在配置文件中加入的，像上面的requests.anyRequest().authenticated()，进入源码上看一下
+
+``` AuthorizeHttpRequestsConfigurer
+public final class AuthorizeHttpRequestsConfigurer<H extends HttpSecurityBuilder<H>>
+		extends AbstractHttpConfigurer<AuthorizeHttpRequestsConfigurer<H>, H> {
+  public AuthorizationManagerRequestMatcherRegistry authenticated() {
+    return access(AuthenticatedAuthorizationManager.authenticated());
+  }
+
+  public AuthorizationManagerRequestMatcherRegistry access(
+      AuthorizationManager<RequestAuthorizationContext> manager) {
+    Assert.notNull(manager, "manager cannot be null");
+    return (this.not)
+        ? AuthorizeHttpRequestsConfigurer.this.addMapping(this.matchers, AuthorizationManagers.not(manager))
+        : AuthorizeHttpRequestsConfigurer.this.addMapping(this.matchers, manager);
+  }
+}
+```

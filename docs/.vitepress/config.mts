@@ -67,6 +67,14 @@ export default defineConfig({
       },
       {
         collapsed: true, // 侧边栏折叠
+        text: 'rocketmq',
+        items: [
+          { text: '源码环境的搭建', link: '/rocketmq/start' },
+          { text: 'SpringBoot接入rocketmq', link: '/rocketmq/spring-boot-rocketmq'}
+        ]
+      },
+      {
+        collapsed: true, // 侧边栏折叠
         text: 'k8s',
         items: [
           { text: 'ubuntu安装k8s(1.30)', link: '/k8s/install' },
