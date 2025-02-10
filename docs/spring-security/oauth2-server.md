@@ -6,7 +6,7 @@
 
 ## 项目环境搭建
 
-由于继承Spring Authorization Server这个项目太复杂了，所以这里就不一步一步新建项目，基于spring-authorization-server官网的Demo来，由于官网的demo是基于gradle的，所以这个就提供一个基于maven的[开源项目](https://github.com/WatermelonPlanet/spring-authorization-server-master), 当然这个项目提供的资料已经很全面了，这篇文章说明一下spring-authorization-server的工作流程。
+由于集成Spring Authorization Server这个项目太复杂了，所以这里就不一步一步新建项目，基于spring-authorization-server官网的Demo来，由于官网的demo是基于gradle的，所以这个就提供一个基于maven的[开源项目](https://github.com/WatermelonPlanet/spring-authorization-server-master), 当然这个项目提供的资料已经很全面了，这篇文章说明一下spring-authorization-server的工作流程。
 
 里面包含了三个项目，具体如下所示：
 
@@ -566,9 +566,7 @@ public final class OAuth2AuthorizationEndpointConfigurer extends AbstractOAuth2C
 
 具体怎么获取的那三个方法这里就不细讲了，主要是先通过httpSecurity.getSharedObject获取，如果没有，再通过ApplicationContext中直接获取对应bean，具体的可以跟一下代码。
 
-在认证服务器的demo里面，在AuthorizationServerConfig给我们配置了这几个实现
-
-525342，看一下代码。
+在认证服务器的demo里面，在AuthorizationServerConfig给我们配置了这几个实现，看一下代码。
 
 ``` AuthorizationServerConfig
 @Configuration(proxyBeanMethods = false)
@@ -687,16 +685,16 @@ public final class OAuth2TokenEndpointConfigurer extends AbstractOAuth2Configure
 
 ``` OAuth2TokenEndpointFilter
 public final class OAuth2TokenEndpointFilter extends OncePerRequestFilter {
-	@Override
-	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-			throws ServletException, IOException {
+  @Override
+  protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+      throws ServletException, IOException {
 
-		if (!this.tokenEndpointMatcher.matches(request)) {
-			filterChain.doFilter(request, response);
-			return;
-		}
+    if (!this.tokenEndpointMatcher.matches(request)) {
+      filterChain.doFilter(request, response);
+      return;
+    }
     Authentication authorizationGrantAuthentication = this.authenticationConverter.convert(request);
-    			OAuth2AccessTokenAuthenticationToken accessTokenAuthentication =
+          OAuth2AccessTokenAuthenticationToken accessTokenAuthentication =
     (OAuth2AccessTokenAuthenticationToken) this.authenticationManager.authenticate(authorizationGrantAuthentication);
     this.authenticationSuccessHandler.onAuthenticationSuccess(request, response, accessTokenAuthentication);
   }
@@ -1179,7 +1177,7 @@ public final class OAuth2ResourceServerConfigurer<H extends HttpSecurityBuilder<
 由于我们在ResourceServerConfig中配置jwt，所以用的是jwtConfigurer, 用的JwtAuthenticationProvider，我们大致看一下逻辑就好了。
 
 ``` JwtAuthenticationProvider
-  public final class JwtAuthenticationProvider implements AuthenticationProvider {
+public final class JwtAuthenticationProvider implements AuthenticationProvider {
   @Override
   public Authentication authenticate(Authentication authentication) throws AuthenticationException {
     BearerTokenAuthenticationToken bearer = (BearerTokenAuthenticationToken) authentication;
@@ -1191,7 +1189,7 @@ public final class OAuth2ResourceServerConfigurer<H extends HttpSecurityBuilder<
     this.logger.debug("Authenticated token");
     return token;
   }
-  }
+}
 ```
 
 可以看到其实就是用JwtAuthenticationConverter来对authentication进行认证。大家有兴趣的话就追一下JwtAuthenticationConverter的代码吧，上面有讲过Converter的原理了。
@@ -1271,3 +1269,16 @@ spring:
 ```
 
 这里的获取是在第一次Provider认证的时候获取的，有点懒加载的意思, 具体在哪里放到JwtAuthenticationProvider中的，可以看一下JwtAuthenticationProvider的初始化函数。
+
+```OAuth2ResourceServerConfigurer{5}
+AuthenticationProvider getAuthenticationProvider() {
+  if (this.authenticationManager != null) {
+    return null;
+  }
+  JwtDecoder decoder = getJwtDecoder();
+  Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter = getJwtAuthenticationConverter();
+  JwtAuthenticationProvider provider = new JwtAuthenticationProvider(decoder);
+  provider.setJwtAuthenticationConverter(jwtAuthenticationConverter);
+  return postProcess(provider);
+}
+```

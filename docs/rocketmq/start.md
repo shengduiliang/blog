@@ -128,3 +128,7 @@ producer.setNamesrvAddr(DEFAULT_NAMESRVADDR);
 ![product-result](./images/product-result.png)
 
 如果控制台有上面的打印，则说明源码已经成功运行。
+
+:::warning
+RocketMQ问题答疑官方网站点击[此处](https://rocketmq.io/faq/)访问
+:::

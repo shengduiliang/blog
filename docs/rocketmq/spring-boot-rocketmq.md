@@ -69,7 +69,7 @@ networks:
     driver: bridge
 ```
 
-执行docker-compose up -d启动即可。访问rocketmq控制台。
+执行docker-compose up -d启动即可。访问[rocketmq控制台](http://192.168.233.132:8082/)。
 
 ![rocketmq-dashboard](./images/rocketmq-dashboard.png)
 
@@ -207,3 +207,115 @@ public class MyConsumer implements RocketMQListener<String> {
 ```
 
 可以参照这篇文档：https://www.cnblogs.com/jianzh5/p/17301690.html
+
+## Docker构建ARM版本RocketMQ
+
+由于本人用的是M4芯片ARM系统的MAC，没法使用官方提供的镜像，所以只能自己构建rocketmq的镜像了，比较令人欣慰的是，github上提供了rocketmq的构建Dockerfile, 需要的话可以点击[此处](https://github.com/apache/rocketmq-docker), 首先克隆仓库下来，这里使用加速代理
+
+```
+git clone https://mirror.ghproxy.com/https://github.com/apache/rocketmq-docker.git
+```
+
+进入image-build目录，由于本人是在ubuntu上使用rocketmq的，所以使用Dockerfile-ubuntu这个Dockerfile，由于rocketmq最新的版本是5.3.1, 所以直接执行下面的指令即可。
+
+```
+sh build-image.sh 5.3.1 ubuntu
+```
+
+注意，由于是国内环境，有些依赖会下不下来，由于我的电脑是可以访问外网的，所以直接配置代理为本机的IP, 修改了build-image.sh, 大家可以参考一下
+
+```
+ubuntu@ubuntu:~/rocketmq/rocketmq-docker/image-build$ git diff build-image.sh
+diff --git a/image-build/build-image.sh b/image-build/build-image.sh
+index 57cac71..10ead7b 100755
+--- a/image-build/build-image.sh
++++ b/image-build/build-image.sh
+@@ -39,10 +39,10 @@ checkVersion $ROCKETMQ_VERSION
+ # Build rocketmq
+ case "${BASE_IMAGE}" in
+     alpine)
+-        docker build --no-cache -f Dockerfile-alpine -t apache/rocketmq:${ROCKETMQ_VERSION}-alpine --build-arg version=${ROCKETMQ_VERSION} .
++        docker build --no-cache -f Dockerfile-alpine -t shengduiliang/rocketmq:${ROCKETMQ_VERSION}-alpine --build-arg version=${ROCKETMQ_VERSION} .
+     ;;
+     ubuntu)
+-        docker build --no-cache -f Dockerfile-ubuntu -t apache/rocketmq:${ROCKETMQ_VERSION} --build-arg version=${ROCKETMQ_VERSION} .
++        docker build --no-cache -f Dockerfile-ubuntu -t shengduiliang/rocketmq:${ROCKETMQ_VERSION} --build-arg version=${ROCKETMQ_VERSION}  --build-arg http_proxy=http://192.168.233.132:7890 --build-arg https_proxy=http://192.168.233.132:7890 .
+     ;;
+     *)
+         echo "${BASE_IMAGE} is not supported, supported base images: ubuntu, alpine"
+```
+
+这里还改了构建之后的镜像名字，因为要上传到docker hub仓库。如果大家不愿意自己构建的话，可以[点击](https://hub.docker.com/r/shengduiliang/rocketmq)此处下载镜像。
+
+rocketmq-dashboard的构建会麻烦一些，因为centos7已经不维护了，刚开始报镜像找不到，换了一个镜像仓库还是不行，看了一下Dockerfile，还好提供了ubuntu的构建，修改如下:
+
+```
+ubuntu@ubuntu:~/rocketmq/rocketmq-docker/image-build$ git diff build-image-dashboard.sh Dockerfile-centos-dashboard
+diff --git a/image-build/Dockerfile-centos-dashboard b/image-build/Dockerfile-centos-dashboard
+index 492809e..a42acf3 100644
+--- a/image-build/Dockerfile-centos-dashboard
++++ b/image-build/Dockerfile-centos-dashboard
+@@ -15,15 +15,18 @@
+ # limitations under the License.
+ #
+ 
+-FROM centos:7
++# FROM centos:7
+ 
+-RUN yum install -y java-1.8.0-openjdk-devel.x86_64 unzip openssl, which gnupg, wget \
+- && yum clean all -y
++# RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
++# RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+ 
+-# FROM openjdk:8-jdk
+-# RUN apt-get update && apt-get install -y --no-install-recommends \
+-#  bash libapr1 unzip telnet wget gnupg ca-certificates \
+-# && rm -rf /var/lib/apt/lists/*
++# RUN yum install -y java-1.8.0-openjdk-devel.x86_64 unzip openssl, which gnupg, wget \
++# && yum clean all -y
++
++FROM openjdk:8-jdk
++RUN apt-get update && apt-get install -y --no-install-recommends \
++    bash libapr1 unzip telnet wget gnupg ca-certificates \
++    && rm -rf /var/lib/apt/lists/*
+ 
+ ARG user=rocketmq
+ ARG group=rocketmq
+@@ -40,7 +43,7 @@ ARG version
+ 
+ # install maven 3.6.3
+ ARG MAVEN_VERSION=3.6.3
+-ARG MAVEN_DOWNLOAD_URL=https://dlcdn.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
++ARG MAVEN_DOWNLOAD_URL=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+ 
+ RUN mkdir -p /usr/share/maven /usr/share/maven/ref && \
+     wget -O /tmp/apache-maven.tar.gz ${MAVEN_DOWNLOAD_URL} --no-check-certificate && \
+@@ -87,7 +90,8 @@ RUN mkdir bin; \
+     
+ RUN rm -rf /root/.m2/repository/*
+ RUN rm -rf /usr/share/maven
+-RUN yum remove wget unzip openssl -y
++# RUN yum remove wget unzip openssl -y
++RUN apt-get remove wget unzip ca-certificates
+ 
+ RUN chown -R ${uid}:${gid} ${ROCKETMQ_DASHBOARD_HOME}
+ EXPOSE 8080
+diff --git a/image-build/build-image-dashboard.sh b/image-build/build-image-dashboard.sh
+old mode 100644
+new mode 100755
+index 22339c4..be1eb48
+--- a/image-build/build-image-dashboard.sh
++++ b/image-build/build-image-dashboard.sh
+@@ -39,7 +39,7 @@ checkVersion $ROCKETMQ_DASHBOARD_VERSION
+ # Build rocketmq
+ case "${BASE_IMAGE}" in
+     centos)
+-        docker build --no-cache -f Dockerfile-centos-dashboard -t apache/rocketmq-dashboard:${ROCKETMQ_DASHBOARD_VERSION}-centos --build-arg version=${ROCKETMQ_DASHBOARD_VERSION} .
++        docker build --no-cache -f Dockerfile-centos-dashboard -t apache/rocketmq-dashboard:${ROCKETMQ_DASHBOARD_VERSION}-centos --build-arg version=${ROCKETMQ_DASHBOARD_VERSION}  --build-arg http_proxy=http://
+192.168.233.132:7890 --build-arg https_proxy=http://192.168.233.132:7890 .
+     ;;
+     *)
+         echo "${BASE_IMAGE} is not supported, supported base images: centos"
+```
+
+注意，build-image-dashboard.sh里面的代理IP如果不是用这个要修改。这个镜像一样放到了[Dockerhub仓库](https://hub.docker.com/repository/docker/shengduiliang/rocketmq-dashboard/general)

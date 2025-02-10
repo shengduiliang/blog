@@ -3,7 +3,7 @@ import { defineConfig } from 'vitepress'
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   markdown: {
-    lineNumbers: true
+    lineNumbers: true,
   },
   title: "shengduiliang",
   description: "shengduiliang的博客网站",
@@ -13,7 +13,8 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Spring Security', link: '/spring-security/start' },
       { text: 'xxl-job', link: '/xxl-job/start'},
-      { text: 'redis', link: '/redis/start'}
+      { text: 'redis', link: '/redis/start'},
+      { text: 'rocketmq', link: '/rocketmq/start'}
     ],
 
     sidebar: [
@@ -70,7 +71,13 @@ export default defineConfig({
         text: 'rocketmq',
         items: [
           { text: '源码环境的搭建', link: '/rocketmq/start' },
-          { text: 'SpringBoot接入rocketmq', link: '/rocketmq/spring-boot-rocketmq'}
+          { text: 'SpringBoot接入rocketmq', link: '/rocketmq/spring-boot-rocketmq'},
+          { text: 'rocketmq设计架构', link: '/rocketmq/architecture'},
+          { text: 'nameServer初始化与路由', link: '/rocketmq/nameserver'},
+          { text: 'rocketmq网络请求处理', link: '/rocketmq/netty-modal'},
+          { text: '生产者启动和消息发送流程', link: '/rocketmq/producer'},
+          { text: 'Broker启动流程', link: '/rocketmq/broker'},
+          { text: '消息储存流程', link: '/rocketmq/store'}
         ]
       },
       {
